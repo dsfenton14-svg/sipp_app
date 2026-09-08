@@ -37,7 +37,7 @@ from autorizacion_codigo import (
 )
 
 datos_empresa = {"nombre": "", "ruc": "", "direccion": "", "telefono": "", "logo": ""}
-VERSION_APLICACION = "2.3.5"
+VERSION_APLICACION = "2.3.6"
 URL_MANIFIESTO_ACTUALIZACION = ""
 URL_RELEASES_GITHUB = "https://api.github.com/repos/dsfenton14-svg/sipp_app/releases/latest"
 COLA_UI = queue.Queue()
