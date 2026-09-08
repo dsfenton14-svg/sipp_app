@@ -1,0 +1,20 @@
+Coloca aquí las capturas de pantalla de la app (formato .png) con estos nombres exactos
+para que aparezcan automáticamente en la sección "Manuales":
+
+bienvenida.png
+gestion_personal.png
+gestion_planilla.png
+gestion_tiempo.png
+descuentos_prestamos.png
+deducciones_retenciones.png
+remuneraciones.png
+ausencias_permisos.png
+vacaciones.png
+contratos_trabajo.png
+liquidaciones.png
+cartas.png
+configuracion.png
+seguridad.png
+reportes_ayuda.png
+
+Si el archivo no existe, esa diapositiva mostrará solo el texto explicativo.

@@ -1,0 +1,7 @@
+customtkinter==5.2.2
+customtkinterthemes==1.0.2
+openpyxl==3.1.5
+Pillow==12.2.0
+psycopg[binary]==3.2.13
+reportlab==5.0.0
+tkcalendar==1.6.1

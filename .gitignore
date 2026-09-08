@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.log
+servidor_autorizacion/.env
+servidor_autorizacion/__pycache__/
+
+# Entornos y artefactos locales
+.venv/
+.venv-*/
+build/
+dist/
+*.spec
+
+# Datos y secretos de clientes
+*.bin
+respaldos/
+uploads/
+exportaciones/
+sipp.log
