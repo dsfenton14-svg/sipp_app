@@ -10,7 +10,7 @@
    git push origin v2.3.1
    ```
 
-5. GitHub Actions compilara `SiPP.exe` y creara el Release automaticamente.
+5. GitHub Actions compilara `SiPP.exe`, lo empaquetara con Inno Setup y creara el instalador `SiPP-Setup-vX.Y.Z.exe` en el Release automaticamente.
 6. Probar el instalador del Release antes de distribuirlo.
 
-La aplicacion no debe descargar commits directamente. Las actualizaciones deben distribuirse como instaladores publicados en Releases. La URL del manifiesto se configurara cuando exista el repositorio remoto definitivo.
+La aplicacion no debe descargar commits directamente. Las actualizaciones deben distribuirse como instaladores publicados en Releases. El instalador conserva la configuracion local del usuario al actualizar y crea accesos directos y desinstalador de Windows.

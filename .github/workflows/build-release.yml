@@ -27,12 +27,23 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller==6.22.0
 
-      - name: Build executable
+      - name: Build application bundle
         run: >-
-          pyinstaller --noconfirm --clean --onefile --windowed
-          --name SiPP SiPP.py
+          pyinstaller --noconfirm --clean --onedir --windowed
+          --name SiPP --icon imagenes/icono1.ico
+          --add-data "imagenes;imagenes" SiPP.py
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress --yes
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion="$version" installer\SiPP.iss
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dist/SiPP.exe --generate-notes --title "SiPP ${{ github.ref_name }}"
+        run: gh release create "${{ github.ref_name }}" "dist/installer/SiPP-Setup-v${{ github.ref_name }}.exe" --generate-notes --title "SiPP ${{ github.ref_name }}"
