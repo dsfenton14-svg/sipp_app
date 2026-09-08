@@ -50,7 +50,20 @@ jobs:
           path: dist/installer/SiPP-Setup-${{ github.ref_name }}.exe
           if-no-files-found: error
 
+      - name: Create installer checksum
+        shell: pwsh
+        run: |
+          $installer = "dist/installer/SiPP-Setup-${{ github.ref_name }}.exe"
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLower()
+          "$hash  SiPP-Setup-${{ github.ref_name }}.exe" | Set-Content "dist/installer/SHA256SUMS.txt" -Encoding ascii
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" "dist/installer/SiPP-Setup-${{ github.ref_name }}.exe" --generate-notes --title "SiPP ${{ github.ref_name }}"
+        run: >-
+          gh release create "${{ github.ref_name }}"
+          "dist/installer/SiPP-Setup-${{ github.ref_name }}.exe"
+          dist/installer/SHA256SUMS.txt
+          --generate-notes
+          --title "SiPP ${{ github.ref_name }}"
+          --notes "Instalador oficial de SiPP. Descarga únicamente desde este Release de GitHub. Verifica SHA-256 con SHA256SUMS.txt."
