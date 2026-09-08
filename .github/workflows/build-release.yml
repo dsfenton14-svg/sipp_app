@@ -43,6 +43,13 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart('v')
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion="$version" installer\SiPP.iss
 
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiPP-Setup-${{ github.ref_name }}
+          path: dist/installer/SiPP-Setup-${{ github.ref_name }}.exe
+          if-no-files-found: error
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
