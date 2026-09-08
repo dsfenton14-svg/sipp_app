@@ -14,6 +14,7 @@ import logging
 import json
 import threading
 import queue
+import tempfile
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen, urlretrieve
 from xml.sax.saxutils import escape
@@ -36,8 +37,9 @@ from autorizacion_codigo import (
 )
 
 datos_empresa = {"nombre": "", "ruc": "", "direccion": "", "telefono": "", "logo": ""}
-VERSION_APLICACION = "2.3.0"
+VERSION_APLICACION = "2.3.5"
 URL_MANIFIESTO_ACTUALIZACION = ""
+URL_RELEASES_GITHUB = "https://api.github.com/repos/dsfenton14-svg/sipp_app/releases/latest"
 COLA_UI = queue.Queue()
 
 
@@ -2238,44 +2240,50 @@ class ventana_principal:
         ctk.CTkLabel(frame, text="Actualizaciones", font=ctk.CTkFont(size=22, weight="bold"), anchor="w").pack(fill="x", padx=22, pady=(22, 5))
         ctk.CTkLabel(frame, text=f"Versión instalada: {VERSION_APLICACION}", font=ctk.CTkFont(size=12), anchor="w").pack(fill="x", padx=22, pady=(0, 14))
 
-        formulario = ctk.CTkFrame(frame, fg_color="transparent")
-        formulario.pack(fill="x", padx=22)
-        formulario.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(formulario, text="Dirección de actualización:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=0, column=0, padx=(0, 10), pady=8, sticky="w")
-        entrada_url = ctk.CTkEntry(formulario, placeholder_text="URL del manifiesto JSON")
-        entrada_url.insert(0, URL_MANIFIESTO_ACTUALIZACION)
-        entrada_url.grid(row=0, column=1, pady=8, sticky="ew")
-        estado = ctk.CTkLabel(frame, text="Indica la dirección publicada por el administrador de SiPP.", anchor="w", justify="left", wraplength=570, text_color=("#526071", "#cbd5e1"))
+        estado = ctk.CTkLabel(frame, text="La aplicación consultará automáticamente el Release oficial de GitHub.", anchor="w", justify="left", wraplength=570, text_color=("#526071", "#cbd5e1"))
         estado.pack(fill="x", padx=22, pady=(16, 12))
 
         def consultar_actualizacion():
-            url = entrada_url.get().strip()
-            if not url:
-                estado.configure(text="Aún no se ha configurado una dirección de actualización.")
-                return
             try:
-                solicitud = Request(url, headers={"Accept": "application/json"})
+                solicitud = Request(
+                    URL_RELEASES_GITHUB,
+                    headers={
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "SiPP-Updater",
+                    },
+                )
                 with urlopen(solicitud, timeout=10) as respuesta:
-                    manifiesto = json.loads(respuesta.read().decode("utf-8"))
-                version_nueva = str(manifiesto.get("version", "")).strip()
-                url_descarga = str(manifiesto.get("url_descarga", "")).strip()
-                notas = str(manifiesto.get("notas", "Sin notas de versión.")).strip()
-                if not version_nueva or not url_descarga:
-                    raise ValueError("El manifiesto debe incluir version y url_descarga.")
-                if version_nueva == VERSION_APLICACION:
+                    release = json.loads(respuesta.read().decode("utf-8"))
+                etiqueta = str(release.get("tag_name", "")).strip()
+                version_nueva = etiqueta.removeprefix("v")
+                notas = str(release.get("body", "Sin notas de versión.")).strip() or "Sin notas de versión."
+                activos = release.get("assets", [])
+                nombre_instalador = f"SiPP-Setup-{etiqueta}.exe"
+                activo = next(
+                    (elemento for elemento in activos if elemento.get("name") == nombre_instalador),
+                    None,
+                )
+                if not version_nueva or not activo:
+                    raise ValueError("El Release no contiene un instalador válido de SiPP.")
+
+                def version_tuple(version):
+                    return tuple(int(parte) for parte in version.split(".")[:3])
+
+                if version_tuple(version_nueva) <= version_tuple(VERSION_APLICACION):
                     estado.configure(text=f"Ya tienes la versión {VERSION_APLICACION}.\n\n{notas}")
                     return
-                confirmar = messagebox.askyesno("Actualización disponible", f"Nueva versión: {version_nueva}\n\n{notas}\n\n¿Deseas descargarla?", parent=top_level)
+                confirmar = messagebox.askyesno(
+                    "Actualización disponible",
+                    f"Nueva versión: {version_nueva}\n\n{notas}\n\n¿Deseas descargarla e instalarla?",
+                    parent=top_level,
+                )
                 if not confirmar:
                     return
-                destino = filedialog.asksaveasfilename(parent=top_level, title="Guardar actualización", initialfile=os.path.basename(url_descarga) or "SiPP_actualizacion.exe", defaultextension=".exe", filetypes=[("Instalador", "*.exe"), ("Todos los archivos", "*.*")])
-                if not destino:
-                    return
                 estado.configure(text="Descargando actualización...")
-                urlretrieve(url_descarga, destino)
-                estado.configure(text=f"Actualización descargada en:\n{destino}\n\nCierra SiPP antes de ejecutar el instalador.")
-                if messagebox.askyesno("Descarga completada", "¿Deseas abrir el instalador ahora?", parent=top_level):
-                    os.startfile(destino)
+                nombre_temporal = os.path.join(tempfile.gettempdir(), nombre_instalador)
+                urlretrieve(activo["browser_download_url"], nombre_temporal)
+                estado.configure(text="Actualización descargada. SiPP se cerrará para iniciar el instalador.")
+                top_level.after(800, lambda: (os.startfile(nombre_temporal), sipp.destroy()))
             except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError) as exc:
                 estado.configure(text=f"No se pudo consultar la actualización:\n{exc}")
 
