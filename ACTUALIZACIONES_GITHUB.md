@@ -25,3 +25,11 @@ La aplicacion no debe descargar commits directamente. Las actualizaciones deben 
 - No desactivar Defender o SmartScreen globalmente.
 
 La firma digital no esta incluida en este flujo gratuito. Por eso Windows puede mostrar una advertencia en cada instalador nuevo aunque el archivo sea legitimo.
+
+## Revision en Microsoft Defender
+
+Si SmartScreen o Defender bloquea una version, enviar manualmente el instalador desde el portal oficial:
+
+https://www.microsoft.com/en-us/wdsi/filesubmission
+
+Seleccionar la opcion de archivo bloqueado o falso positivo, cargar el `SiPP-Setup-vX.Y.Z.exe` del Release y conservar el numero de caso. Esta revision no reemplaza la firma digital ni garantiza que desaparezcan todas las advertencias.

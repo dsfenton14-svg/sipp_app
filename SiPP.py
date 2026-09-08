@@ -2282,7 +2282,14 @@ class ventana_principal:
                 estado.configure(text="Descargando actualización...")
                 nombre_temporal = os.path.join(tempfile.gettempdir(), nombre_instalador)
                 urlretrieve(activo["browser_download_url"], nombre_temporal)
-                estado.configure(text="Actualización descargada. SiPP se cerrará para iniciar el instalador.")
+                estado.configure(
+                    text=(
+                        "Actualización descargada. SiPP se cerrará para iniciar el instalador.\n\n"
+                        "Si Windows muestra SmartScreen, pulsa «Más información» y después "
+                        "«Ejecutar de todas formas» únicamente si verificaste que el archivo "
+                        "proviene del Release oficial de GitHub."
+                    )
+                )
                 top_level.after(800, lambda: (os.startfile(nombre_temporal), sipp.destroy()))
             except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError) as exc:
                 estado.configure(text=f"No se pudo consultar la actualización:\n{exc}")
