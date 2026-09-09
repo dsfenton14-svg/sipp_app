@@ -326,6 +326,27 @@ class ConexionDB_datos_usuarios:
             usuarios = cursor.fetchall()
             cursor.close()
             return usuarios
+
+    def obtener_administradores(self):
+        with self.conexion.cursor() as cursor:
+            cursor.execute("SELECT nombre FROM usuarios WHERE rol = 'ADMIN' ORDER BY nombre")
+            administradores = [fila[0] for fila in cursor.fetchall()]
+        return administradores
+
+    def eliminar_administrador(self, nombre):
+        with self.conexion.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM usuarios
+                WHERE nombre = %s
+                  AND LOWER(nombre) <> LOWER('@@22')
+                  AND rol = 'ADMIN'
+                """,
+                (nombre,),
+            )
+            eliminado = cursor.rowcount > 0
+            self.conexion.commit()
+        return eliminado
         
     def eliminar_usuario(self, nombre):
         with self.conexion.cursor() as cursor:

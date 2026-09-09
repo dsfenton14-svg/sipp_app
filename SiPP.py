@@ -1856,7 +1856,123 @@ class ventana_principal:
         self.plataformas(self.frameprincipal)
         Sipp.bind("<Control-Alt-l>", self.abrir_limpiar)
         Sipp.bind("<Control-Shift-g>", self.abrir_log)
+        Sipp.bind("<Control-Alt-e>", self.abrir_eliminar_administradores)
         Sipp.after(1200, lambda: self.revisar_notificaciones_asistencia(Sipp))
+
+    def abrir_eliminar_administradores(self, event=None):
+        sipp = self.frameprincipal.winfo_toplevel()
+        if not self._es_administrador(sipp):
+            messagebox.showerror(
+                "Acceso denegado",
+                "Solo un administrador puede eliminar administradores.",
+                parent=sipp,
+            )
+            return "break"
+
+        top_level = ctk.CTkToplevel(sipp)
+        top_level.title("Eliminar administradores")
+        ajustar_toplevel_a_pantalla(
+            top_level,
+            560,
+            480,
+            margen_x=80,
+            margen_y=80,
+            min_ancho=460,
+            min_alto=380,
+        )
+        top_level.resizable(False, True)
+        top_level.transient(sipp)
+        top_level.grab_set()
+
+        frame = ctk.CTkFrame(
+            top_level,
+            corner_radius=18,
+            fg_color=("#ffffff", "#111b27"),
+            border_width=1,
+        )
+        frame.pack(fill="both", expand=True, padx=16, pady=16)
+        ctk.CTkLabel(
+            frame,
+            text="Eliminar administradores",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            anchor="w",
+        ).pack(fill="x", padx=22, pady=(20, 4))
+        ctk.CTkLabel(
+            frame,
+            text="@@22 está protegido y no se puede eliminar.",
+            anchor="w",
+            text_color=("#b45309", "#fbbf24"),
+        ).pack(fill="x", padx=22, pady=(0, 14))
+
+        lista = ctk.CTkScrollableFrame(frame, corner_radius=12)
+        lista.pack(fill="both", expand=True, padx=22, pady=(0, 12))
+
+        def cargar_administradores():
+            for widget in lista.winfo_children():
+                widget.destroy()
+            try:
+                administradores = db.ConexionDB_datos_usuarios().obtener_administradores()
+            except Exception as exc:
+                ctk.CTkLabel(
+                    lista,
+                    text=f"No se pudieron cargar los administradores:\n{exc}",
+                    anchor="w",
+                    justify="left",
+                ).pack(fill="x", padx=12, pady=12)
+                return
+            if not administradores:
+                ctk.CTkLabel(lista, text="No hay administradores registrados.").pack(pady=18)
+                return
+            for nombre in administradores:
+                fila = ctk.CTkFrame(lista, fg_color="transparent")
+                fila.pack(fill="x", padx=8, pady=6)
+                ctk.CTkLabel(fila, text=str(nombre), anchor="w").pack(side="left", fill="x", expand=True)
+                protegido = str(nombre).casefold() == "@@22"
+
+                def eliminar(nombre_administrador=nombre):
+                    if str(nombre_administrador).casefold() == "@@22":
+                        messagebox.showwarning(
+                            "Administrador protegido",
+                            "El administrador @@22 no se puede eliminar.",
+                            parent=top_level,
+                        )
+                        return
+                    confirmar = messagebox.askyesno(
+                        "Confirmar eliminación",
+                        f"¿Deseas eliminar al administrador {nombre_administrador}?",
+                        parent=top_level,
+                    )
+                    if not confirmar:
+                        return
+                    try:
+                        eliminado = db.ConexionDB_datos_usuarios().eliminar_administrador(nombre_administrador)
+                        if not eliminado:
+                            raise RuntimeError("El administrador no existe o está protegido.")
+                    except Exception as exc:
+                        messagebox.showerror("Eliminar administrador", str(exc), parent=top_level)
+                        return
+                    cargar_administradores()
+
+                ctk.CTkButton(
+                    fila,
+                    text="Protegido" if protegido else "Eliminar",
+                    width=110,
+                    state="disabled" if protegido else "normal",
+                    fg_color="#64748b" if protegido else "#b91c1c",
+                    hover_color="#991b1b",
+                    command=eliminar,
+                ).pack(side="right")
+
+        cargar_administradores()
+        ctk.CTkButton(
+            frame,
+            text="Cerrar",
+            width=120,
+            fg_color="#64748b",
+            hover_color="#475569",
+            command=top_level.destroy,
+        ).pack(anchor="e", padx=22, pady=(0, 16))
+
 
     def abrir_limpiar(self, event=None):
         sipp = self.frameprincipal.winfo_toplevel()
