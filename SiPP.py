@@ -2011,8 +2011,12 @@ class ventana_principal:
 
         estado_limpieza = ctk.CTkLabel(contenedor, text="", anchor="w")
         estado_limpieza.pack(fill="x", padx=20, pady=(0, 10))
+        progreso_limpieza = ctk.CTkProgressBar(contenedor, mode="indeterminate", height=8)
+        progreso_limpieza.pack(fill="x", padx=20, pady=(0, 10))
+        progreso_limpieza.stop()
         acciones = ctk.CTkFrame(contenedor, fg_color="transparent")
         acciones.pack(fill="x", padx=20, pady=(0, 16))
+        boton_limpiar = None
 
         def limpiar_base_datos():
             confirmado = messagebox.askyesno(
@@ -2029,7 +2033,23 @@ class ventana_principal:
             )
             if not confirmado_de_nuevo:
                 return
-            try:
+            progreso_limpieza.start()
+            boton_limpiar.configure(state="disabled")
+
+            def limpieza_terminada(resultado):
+                progreso_limpieza.stop()
+                boton_limpiar.configure(state="normal")
+                estado_limpieza.configure(text=f"Limpieza completada: {resultado['cantidad_tablas']} tablas vaciadas.")
+                messagebox.showinfo("Limpiar", "La base de datos quedó lista para volver a usarse.", parent=top_level)
+
+            def limpieza_fallida(exc):
+                progreso_limpieza.stop()
+                boton_limpiar.configure(state="normal")
+                logging.exception("No se pudieron limpiar los datos operativos")
+                estado_limpieza.configure(text="No se pudo completar la limpieza.")
+                messagebox.showerror("Limpiar", f"No se pudo limpiar la base de datos:\n{exc}", parent=top_level)
+
+            def ejecutar_limpieza():
                 if respaldo_sipp is None:
                     raise RuntimeError("No está disponible el módulo de respaldos.")
                 ruta_respaldo = respaldo_sipp.crear_copia_seguridad()
@@ -2038,21 +2058,23 @@ class ventana_principal:
                 db.ConexionDB_datos_usuarios().registrar_auditoria(
                     usuario, "LIMPIEZA_DATOS", f"Respaldo previo: {os.path.basename(ruta_respaldo)}"
                 )
-                estado_limpieza.configure(text=f"Limpieza completada: {cantidad_tablas} tablas vaciadas.")
-                messagebox.showinfo("Limpiar", "La base de datos quedó lista para volver a usarse.", parent=top_level)
-            except Exception as exc:
-                logging.exception("No se pudieron limpiar los datos operativos")
-                estado_limpieza.configure(text="No se pudo completar la limpieza.")
-                messagebox.showerror("Limpiar", f"No se pudo limpiar la base de datos:\n{exc}", parent=top_level)
+                return {"cantidad_tablas": cantidad_tablas}
 
-        ctk.CTkButton(
+            ejecutar_en_segundo_plano(
+                ejecutar_limpieza,
+                lambda resultado: top_level.after(0, lambda: limpieza_terminada(resultado)),
+                lambda exc: top_level.after(0, lambda: limpieza_fallida(exc)),
+            )
+
+        boton_limpiar = ctk.CTkButton(
             acciones,
             text="Limpiar base de datos",
             width=190,
             fg_color="#dc2626",
             hover_color="#b91c1c",
             command=limpiar_base_datos,
-        ).pack(side="left")
+        )
+        boton_limpiar.pack(side="left")
         ctk.CTkButton(
             acciones,
             text="Cerrar",
@@ -2358,9 +2380,16 @@ class ventana_principal:
 
         estado = ctk.CTkLabel(frame, text="La aplicación consultará automáticamente el Release oficial de GitHub.", anchor="w", justify="left", wraplength=570, text_color=("#526071", "#cbd5e1"))
         estado.pack(fill="x", padx=22, pady=(16, 12))
+        progreso_actualizacion = ctk.CTkProgressBar(frame, mode="indeterminate", height=8)
+        progreso_actualizacion.pack(fill="x", padx=22, pady=(0, 12))
+        progreso_actualizacion.stop()
 
         def consultar_actualizacion():
-            try:
+            boton_buscar.configure(state="disabled")
+            progreso_actualizacion.start()
+            estado.configure(text="Buscando actualizaciones...")
+
+            def consultar_y_descargar():
                 solicitud = Request(
                     URL_RELEASES_GITHUB,
                     headers={
@@ -2386,18 +2415,41 @@ class ventana_principal:
                     return tuple(int(parte) for parte in version.split(".")[:3])
 
                 if version_tuple(version_nueva) <= version_tuple(VERSION_APLICACION):
-                    estado.configure(text=f"Ya tienes la versión {VERSION_APLICACION}.\n\n{notas}")
+                    return {"estado": f"Ya tienes la versión {VERSION_APLICACION}.\n\n{notas}"}
+                return {
+                    "estado": "disponible",
+                    "version": version_nueva,
+                    "notas": notas,
+                    "url": activo["browser_download_url"],
+                    "nombre": nombre_instalador,
+                }
+
+            def consulta_terminada(resultado):
+                if resultado.get("estado") != "disponible":
+                    progreso_actualizacion.stop()
+                    boton_buscar.configure(state="normal")
+                    estado.configure(text=resultado["estado"])
                     return
                 confirmar = messagebox.askyesno(
                     "Actualización disponible",
-                    f"Nueva versión: {version_nueva}\n\n{notas}\n\n¿Deseas descargarla e instalarla?",
+                    f"Nueva versión: {resultado['version']}\n\n{resultado['notas']}\n\n¿Deseas descargarla e instalarla?",
                     parent=top_level,
                 )
                 if not confirmar:
+                    progreso_actualizacion.stop()
+                    boton_buscar.configure(state="normal")
+                    estado.configure(text="Actualización cancelada.")
                     return
                 estado.configure(text="Descargando actualización...")
-                nombre_temporal = os.path.join(tempfile.gettempdir(), nombre_instalador)
-                urlretrieve(activo["browser_download_url"], nombre_temporal)
+                ejecutar_en_segundo_plano(
+                    lambda: urlretrieve(resultado["url"], os.path.join(tempfile.gettempdir(), resultado["nombre"])),
+                    lambda ruta: top_level.after(0, lambda: descarga_terminada(ruta)),
+                    lambda exc: top_level.after(0, lambda: descarga_fallida(exc)),
+                )
+
+            def descarga_terminada(resultado):
+                nombre_temporal = resultado[0] if isinstance(resultado, tuple) else resultado
+                progreso_actualizacion.stop()
                 estado.configure(
                     text=(
                         "Actualización descargada. SiPP se cerrará para iniciar el instalador.\n\n"
@@ -2407,12 +2459,27 @@ class ventana_principal:
                     )
                 )
                 top_level.after(800, lambda: (os.startfile(nombre_temporal), sipp.destroy()))
-            except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError) as exc:
+
+            def descarga_fallida(exc):
+                progreso_actualizacion.stop()
+                boton_buscar.configure(state="normal")
+                estado.configure(text=f"No se pudo descargar la actualización:\n{exc}")
+
+            def consulta_fallida(exc):
+                progreso_actualizacion.stop()
+                boton_buscar.configure(state="normal")
                 estado.configure(text=f"No se pudo consultar la actualización:\n{exc}")
+
+            ejecutar_en_segundo_plano(
+                consultar_y_descargar,
+                lambda resultado: top_level.after(0, lambda: consulta_terminada(resultado)),
+                lambda exc: top_level.after(0, lambda: consulta_fallida(exc)),
+            )
 
         botones = ctk.CTkFrame(frame, fg_color="transparent")
         botones.pack(fill="x", padx=22, pady=(0, 20))
-        ctk.CTkButton(botones, text="Buscar actualización", width=160, fg_color="#2563eb", hover_color="#1d4ed8", command=consultar_actualizacion).pack(side="left")
+        boton_buscar = ctk.CTkButton(botones, text="Buscar actualización", width=160, fg_color="#2563eb", hover_color="#1d4ed8", command=consultar_actualizacion)
+        boton_buscar.pack(side="left")
         ctk.CTkButton(botones, text="Cerrar", width=110, fg_color="#64748b", hover_color="#475569", command=top_level.destroy).pack(side="right")
 
 
@@ -3074,6 +3141,9 @@ class ventana_principal:
 
         estado = ctk.CTkLabel(frame, text="", anchor="w", justify="left", wraplength=560, text_color=("#526071", "#cbd5e1"))
         estado.pack(fill="x", padx=20, pady=(0, 8))
+        progreso_respaldo = ctk.CTkProgressBar(frame, mode="indeterminate", height=8)
+        progreso_respaldo.pack(fill="x", padx=20, pady=(0, 10))
+        progreso_respaldo.stop()
 
         def refrescar_lista_copias():
             if respaldo_sipp is None:
@@ -3098,12 +3168,18 @@ class ventana_principal:
                 estado.configure(text="No se encontró el módulo de respaldo.")
                 return
             estado.configure(text="Creando copia de seguridad...")
+            progreso_respaldo.start()
+            boton_crear.configure(state="disabled")
 
             def copia_terminada(ruta):
+                progreso_respaldo.stop()
+                boton_crear.configure(state="normal")
                 estado.configure(text=f"Copia creada correctamente: {os.path.basename(ruta)}")
                 refrescar_lista_copias()
 
             def copia_fallida(exc):
+                progreso_respaldo.stop()
+                boton_crear.configure(state="normal")
                 logging.exception("No se pudo crear la copia de seguridad")
                 estado.configure(text=f"No se pudo crear la copia: {exc}")
 
@@ -3125,11 +3201,20 @@ class ventana_principal:
             if not confirmar:
                 return
             estado.configure(text="Restaurando copia de seguridad...")
+            progreso_respaldo.start()
+            boton_restaurar_seleccionada.configure(state="disabled")
+            boton_restaurar_ultima.configure(state="disabled")
 
             def restauracion_terminada(_resultado):
+                progreso_respaldo.stop()
+                boton_restaurar_seleccionada.configure(state="normal")
+                boton_restaurar_ultima.configure(state="normal")
                 estado.configure(text="Restauración completada. Reinicia SiPP para ver los datos restaurados.")
 
             def restauracion_fallida(exc):
+                progreso_respaldo.stop()
+                boton_restaurar_seleccionada.configure(state="normal")
+                boton_restaurar_ultima.configure(state="normal")
                 logging.exception("No se pudo restaurar la copia de seguridad")
                 estado.configure(text=f"No se pudo restaurar: {exc}")
 
@@ -3149,13 +3234,16 @@ class ventana_principal:
 
         botones_arriba = ctk.CTkFrame(frame, fg_color="transparent")
         botones_arriba.pack(fill="x", padx=20, pady=(0, 6))
-        ctk.CTkButton(botones_arriba, text="Crear copia ahora", width=160, fg_color="#2563eb", hover_color="#1d4ed8", command=crear_copia).pack(side="left")
+        boton_crear = ctk.CTkButton(botones_arriba, text="Crear copia ahora", width=160, fg_color="#2563eb", hover_color="#1d4ed8", command=crear_copia)
+        boton_crear.pack(side="left")
 
         botones = ctk.CTkFrame(frame, fg_color="transparent")
         botones.pack(side="bottom", fill="x", padx=20, pady=20)
         ctk.CTkButton(botones, text="Cerrar", width=120, fg_color="#64748b", hover_color="#475569", command=top_level.destroy).pack(side="right")
-        ctk.CTkButton(botones, text="Restaurar seleccionada", width=170, fg_color="#b45309", hover_color="#92400e", command=restaurar_seleccionada).pack(side="right", padx=(0, 10))
-        ctk.CTkButton(botones, text="Restaurar la última", width=150, fg_color="#dc2626", hover_color="#b91c1c", command=restaurar_ultima).pack(side="right", padx=(0, 10))
+        boton_restaurar_seleccionada = ctk.CTkButton(botones, text="Restaurar seleccionada", width=170, fg_color="#b45309", hover_color="#92400e", command=restaurar_seleccionada)
+        boton_restaurar_seleccionada.pack(side="right", padx=(0, 10))
+        boton_restaurar_ultima = ctk.CTkButton(botones, text="Restaurar la última", width=150, fg_color="#dc2626", hover_color="#b91c1c", command=restaurar_ultima)
+        boton_restaurar_ultima.pack(side="right", padx=(0, 10))
 
 
     def configuracion_nueva(self, sipp):

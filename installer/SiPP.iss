@@ -2,6 +2,9 @@
 #ifndef MyAppVersion
   #define MyAppVersion "2.3.0"
 #endif
+#ifndef MyAppSourceDir
+  #define MyAppSourceDir "..\dist\SiPP"
+#endif
 
 [Setup]
 AppId={{B3B6E1C8-6D4A-4A7B-9F22-5F9E3B7D1C40}
@@ -32,7 +35,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos:"
 
 [Files]
-Source: "..\dist\SiPP\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\SiPP"; Filename: "{app}\SiPP.exe"; WorkingDir: "{app}"
