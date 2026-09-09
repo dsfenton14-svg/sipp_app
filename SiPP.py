@@ -3616,7 +3616,7 @@ class ventana_principal:
             return
 
         top_level = ctk.CTkToplevel(sipp)
-        ajustar_toplevel_a_pantalla(top_level, 520, 520, margen_x=80, margen_y=80, min_ancho=440, min_alto=460)
+        ajustar_toplevel_a_pantalla(top_level, 560, 650, margen_x=80, margen_y=80, min_ancho=480, min_alto=560)
         top_level.title("Crear Administrador")
         top_level.resizable(False, True)
         top_level.transient(sipp)
@@ -3626,6 +3626,15 @@ class ventana_principal:
         frame.pack(fill="both", expand=True, padx=16, pady=16)
         ctk.CTkLabel(frame, text="Crear administrador", font=ctk.CTkFont(size=22, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(18, 4))
         ctk.CTkLabel(frame, text="El nuevo usuario tendrá permisos completos.", anchor="w").pack(fill="x", padx=20, pady=(0, 14))
+
+        ctk.CTkLabel(frame, text="Código maestro de seguridad", anchor="w").pack(fill="x", padx=20)
+        entrada_codigo_seguridad = ctk.CTkEntry(
+            frame,
+            height=34,
+            show="*",
+            placeholder_text="Código del administrador actual",
+        )
+        entrada_codigo_seguridad.pack(fill="x", padx=20, pady=(4, 10))
 
         ctk.CTkLabel(frame, text="Nombre de usuario", anchor="w").pack(fill="x", padx=20)
         entrada_usuario = ctk.CTkEntry(frame, height=34, placeholder_text="Ej: administrador2")
@@ -3638,13 +3647,25 @@ class ventana_principal:
         ctk.CTkLabel(frame, text="Confirmar contraseña", anchor="w").pack(fill="x", padx=20)
         confirmar_contraseña = ctk.CTkEntry(frame, height=34, show="*", placeholder_text="Repita la contraseña")
         confirmar_contraseña.pack(fill="x", padx=20, pady=(4, 14))
+        codigo_nuevo = db.generar_codigo_8_digitos()
+        ctk.CTkLabel(frame, text="Código de seguridad del nuevo administrador", anchor="w").pack(fill="x", padx=20)
+        ctk.CTkLabel(
+            frame,
+            text=codigo_nuevo,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#2563eb",
+        ).pack(fill="x", padx=20, pady=(4, 14))
 
         def guardar():
+            codigo_seguridad = entrada_codigo_seguridad.get().strip()
             nombre = entrada_usuario.get().strip()
             contraseña = entrada_contraseña.get()
             confirmacion = confirmar_contraseña.get()
-            if not nombre or not contraseña or not confirmacion:
+            if not codigo_seguridad or not nombre or not contraseña or not confirmacion:
                 messagebox.showwarning("Crear administrador", "Complete todos los campos.", parent=top_level)
+                return
+            if codigo_seguridad != str(db._clave__de__acceso()):
+                messagebox.showwarning("Crear administrador", "El código maestro de seguridad es incorrecto.", parent=top_level)
                 return
             if contraseña != confirmacion:
                 messagebox.showwarning("Crear administrador", "Las contraseñas no coinciden.", parent=top_level)
@@ -3654,7 +3675,7 @@ class ventana_principal:
                 if any(str(usuario[0]).strip().casefold() == nombre.casefold() for usuario in conexion.obtener_usuarios()):
                     messagebox.showwarning("Crear administrador", "Ese nombre de usuario ya existe.", parent=top_level)
                     return
-                conexion.insertar_administrador(nombre, contraseña)
+                conexion.insertar_administrador(nombre, contraseña, codigo_nuevo)
             except ValueError as exc:
                 messagebox.showwarning("Crear administrador", str(exc), parent=top_level)
                 return
@@ -3662,7 +3683,11 @@ class ventana_principal:
                 logging.exception("No se pudo crear el administrador")
                 messagebox.showerror("Crear administrador", f"No se pudo crear el administrador:\n{exc}", parent=top_level)
                 return
-            messagebox.showinfo("Crear administrador", "El administrador fue creado correctamente.", parent=sipp)
+            messagebox.showinfo(
+                "Crear administrador",
+                f"El administrador fue creado correctamente.\n\nCódigo de seguridad: {codigo_nuevo}",
+                parent=sipp,
+            )
             top_level.destroy()
 
         botones = ctk.CTkFrame(frame, fg_color="transparent")
