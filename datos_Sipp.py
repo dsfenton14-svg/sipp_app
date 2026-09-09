@@ -104,7 +104,6 @@ def limpiar_datos_operativos():
         "planilla",
         "remuneraciones",
         "solicitudes_vacaciones",
-        "vacaciones",
     )
     conexion = obtener_conexion()
     with conexion.cursor() as cursor:
