@@ -3500,9 +3500,9 @@ class ventana_principal:
             return
 
         top_level = ctk.CTkToplevel(sipp)
-        ajustar_toplevel_a_pantalla(top_level, 420, 330, margen_x=120, margen_y=100, min_ancho=360, min_alto=290)
+        ajustar_toplevel_a_pantalla(top_level, 520, 520, margen_x=80, margen_y=80, min_ancho=440, min_alto=460)
         top_level.title("Crear Administrador")
-        top_level.resizable(False, False)
+        top_level.resizable(False, True)
         top_level.transient(sipp)
         top_level.grab_set()
 
@@ -3550,7 +3550,7 @@ class ventana_principal:
             top_level.destroy()
 
         botones = ctk.CTkFrame(frame, fg_color="transparent")
-        botones.pack(fill="x", padx=20, pady=(0, 14))
+        botones.pack(side="bottom", fill="x", padx=20, pady=(0, 14))
         ctk.CTkButton(botones, text="Cancelar", width=110, fg_color="#64748b", hover_color="#475569", command=top_level.destroy).pack(side="left")
         ctk.CTkButton(botones, text="Crear", width=110, command=guardar).pack(side="right")
         entrada_usuario.focus_set()
