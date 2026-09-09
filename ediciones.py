@@ -1,16 +1,26 @@
 import psycopg as pc
 import sys
+import config_seguridad
 
 
 class Tema:
     def __init__(self):
+        credenciales = config_seguridad.cargar_credenciales() or {}
+        usuario = credenciales.get("usuario", config_seguridad.DB_USER)
+        contraseña = credenciales.get("contraseña", config_seguridad.DB_PASSWORD)
+        host = credenciales.get("host", config_seguridad.DB_HOST)
+        puerto = credenciales.get("puerto", config_seguridad.DB_PORT)
+        base_datos = credenciales.get("base_datos", config_seguridad.DB_NAME)
+        sslmode = "disable" if host in ("localhost", "127.0.0.1") else config_seguridad.DB_SSLMODE
         try:
             self.conexion = pc.connect(
-                host="localhost",
-                user="postgres",
-                password="12sql@?",
-                port="5432",
-                dbname="SiPP-2"
+                host=host,
+                user=usuario,
+                password=contraseña,
+                port=puerto,
+                dbname=base_datos,
+                sslmode=sslmode,
+                connect_timeout=5,
             )
         except Exception as e:
             print("Error al conectar a la base de datos:\n", e)
@@ -30,7 +40,7 @@ class Tema:
     def datos_tema(self):
         obtener = self.obtener_tema()
         if not obtener:
-            datos = ["extreme"]
+            datos = ["blue"]
             self.insertar_tema(datos)
         else:
             pass

@@ -14,6 +14,9 @@ build/
 dist/
 build_updated/
 dist_updated/
+build_verify/
+dist_verify/
+spec_verify/
 *.spec
 
 # Datos y secretos de clientes

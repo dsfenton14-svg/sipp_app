@@ -31,7 +31,7 @@ jobs:
         run: >-
           pyinstaller --noconfirm --clean --onedir --windowed
           --name SiPP --icon imagenes/icono1.ico
-          --add-data "imagenes;imagenes" SiPP.py
+          --add-data "imagenes;imagenes" --collect-data customtkinterthemes SiPP.py
 
       - name: Install Inno Setup
         shell: pwsh
